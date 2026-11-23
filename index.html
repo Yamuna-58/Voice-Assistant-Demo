@@ -1,3 +1,4 @@
+
 <!DOCTYPE html>
 <html>
 <head>
@@ -40,28 +41,49 @@
 </div>
 
 <script>
+let timerId;
+
 function speak(text) {
     document.getElementById("output").innerText = text;
+    speechSynthesis.cancel();
     let speech = new SpeechSynthesisUtterance(text);
     speechSynthesis.speak(speech);
 }
 
 function startListening() {
-    const SpeechRecognition =
-        window.SpeechRecognition || window.webkitSpeechRecognition;
+    const SR = window.SpeechRecognition || window.webkitSpeechRecognition;
 
-    if (!SpeechRecognition) {
-        speak("Speech recognition is not supported. Please use Google Chrome.");
+    if (!SR) {
+        speak("Please use Google Chrome.");
         return;
     }
 
-    const recognition = new SpeechRecognition();
+    const recognition = new SR();
     recognition.lang = "en-US";
+
     recognition.onresult = function(event) {
         let command = event.results[0][0].transcript.toLowerCase();
         document.getElementById("output").innerText = "You said: " + command;
 
-        if (command.includes("hello") || command.includes("hi")) {
+        if (command.includes("set timer") || command.includes("timer")) {
+            let match = command.match(/(\d+)\s*(second|seconds|minute|minutes)/);
+
+            if (match) {
+                let amount = parseInt(match[1]);
+                let unit = match[2];
+                let seconds = unit.startsWith("minute") ? amount * 60 : amount;
+
+                clearTimeout(timerId);
+                speak("Timer started for " + amount + " " + unit);
+
+                timerId = setTimeout(function() {
+                    speak("Your timer is completed!");
+                }, seconds * 1000);
+            } else {
+                speak("Please specify timer duration in seconds or minutes.");
+            }
+        }
+        else if (command.includes("hello") || command.includes("hi")) {
             speak("Hello! How can I help you?");
         }
         else if (command.includes("time")) {
