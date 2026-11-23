@@ -1,0 +1,94 @@
+<!DOCTYPE html>
+<html>
+<head>
+    <title>Voice Assistant Demo</title>
+    <style>
+        body {
+            font-family: Arial;
+            text-align: center;
+            background: #eef2ff;
+            padding: 50px;
+        }
+        .container {
+            background: white;
+            padding: 30px;
+            border-radius: 15px;
+            max-width: 500px;
+            margin: auto;
+        }
+        button {
+            padding: 14px 25px;
+            background: #4f46e5;
+            color: white;
+            border: none;
+            border-radius: 8px;
+            cursor: pointer;
+            margin: 8px;
+        }
+        #output {
+            margin-top: 20px;
+            font-size: 18px;
+        }
+    </style>
+</head>
+<body>
+<div class="container">
+    <h1>🎙️ Voice Assistant</h1>
+    <p>Click the button and speak your command.</p>
+    <button onclick="startListening()">🎤 Start Speaking</button>
+    <p id="output">Assistant is ready!</p>
+</div>
+
+<script>
+function speak(text) {
+    document.getElementById("output").innerText = text;
+    let speech = new SpeechSynthesisUtterance(text);
+    speechSynthesis.speak(speech);
+}
+
+function startListening() {
+    const SpeechRecognition =
+        window.SpeechRecognition || window.webkitSpeechRecognition;
+
+    if (!SpeechRecognition) {
+        speak("Speech recognition is not supported. Please use Google Chrome.");
+        return;
+    }
+
+    const recognition = new SpeechRecognition();
+    recognition.lang = "en-US";
+    recognition.onresult = function(event) {
+        let command = event.results[0][0].transcript.toLowerCase();
+        document.getElementById("output").innerText = "You said: " + command;
+
+        if (command.includes("hello") || command.includes("hi")) {
+            speak("Hello! How can I help you?");
+        }
+        else if (command.includes("time")) {
+            speak("The time is " + new Date().toLocaleTimeString());
+        }
+        else if (command.includes("date") || command.includes("today")) {
+            speak("Today's date is " + new Date().toLocaleDateString());
+        }
+        else if (command.includes("open google")) {
+            speak("Opening Google");
+            window.open("https://www.google.com", "_blank");
+        }
+        else if (command.includes("open youtube")) {
+            speak("Opening YouTube");
+            window.open("https://www.youtube.com", "_blank");
+        }
+        else {
+            speak("Sorry, I don't know that command.");
+        }
+    };
+
+    recognition.onerror = function() {
+        speak("Sorry, please try again.");
+    };
+
+    recognition.start();
+}
+</script>
+</body>
+</html>
