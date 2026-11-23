@@ -3,20 +3,25 @@
 <html>
 <head>
     <title>Voice Assistant Demo</title>
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+
     <style>
         body {
-            font-family: Arial;
+            font-family: Arial, sans-serif;
             text-align: center;
             background: #eef2ff;
-            padding: 50px;
+            padding: 40px 15px;
         }
+
         .container {
             background: white;
             padding: 30px;
             border-radius: 15px;
             max-width: 500px;
             margin: auto;
+            box-shadow: 0 4px 15px rgba(0,0,0,0.1);
         }
+
         button {
             padding: 14px 25px;
             background: #4f46e5;
@@ -25,92 +30,252 @@
             border-radius: 8px;
             cursor: pointer;
             margin: 8px;
+            font-size: 16px;
         }
+
+        button:hover {
+            background: #3730a3;
+        }
+
         #output {
-            margin-top: 20px;
+            margin-top: 25px;
             font-size: 18px;
+            min-height: 45px;
+        }
+
+        .commands {
+            text-align: left;
+            background: #f3f4f6;
+            padding: 15px;
+            border-radius: 10px;
+            margin-top: 20px;
         }
     </style>
 </head>
+
 <body>
+
 <div class="container">
+
     <h1>🎙️ Voice Assistant</h1>
+
     <p>Click the button and speak your command.</p>
-    <button onclick="startListening()">🎤 Start Speaking</button>
+
+    <button onclick="startListening()">
+        🎤 Start Speaking
+    </button>
+
     <p id="output">Assistant is ready!</p>
+
+    <div class="commands">
+        <h3>Available Commands</h3>
+        <p>Hello</p>
+        <p>What is the time?</p>
+        <p>What is today's date?</p>
+        <p>Set timer for 10 seconds</p>
+        <p>Open Google</p>
+        <p>Open YouTube</p>
+        <p>Exit assistant</p>
+    </div>
+
 </div>
 
 <script>
-let timerId;
 
-function speak(text) {
-    document.getElementById("output").innerText = text;
-    speechSynthesis.cancel();
-    let speech = new SpeechSynthesisUtterance(text);
-    speechSynthesis.speak(speech);
+let timerId = null;
+let recognition = null;
+
+function speak(message) {
+
+    document.getElementById("output").innerText =
+        "Assistant: " + message;
+
+    window.speechSynthesis.cancel();
+
+    let speech = new SpeechSynthesisUtterance(message);
+
+    speech.lang = "en-US";
+    speech.rate = 1;
+
+    window.speechSynthesis.speak(speech);
 }
 
-function startListening() {
-    const SR = window.SpeechRecognition || window.webkitSpeechRecognition;
 
-    if (!SR) {
-        speak("Please use Google Chrome.");
+function startListening() {
+
+    const SpeechRecognition =
+        window.SpeechRecognition ||
+        window.webkitSpeechRecognition;
+
+    if (!SpeechRecognition) {
+
+        speak("Speech recognition is not supported. Please use Google Chrome.");
         return;
     }
 
-    const recognition = new SR();
+    recognition = new SpeechRecognition();
+
     recognition.lang = "en-US";
+    recognition.continuous = false;
+    recognition.interimResults = false;
+    recognition.maxAlternatives = 3;
+
+    document.getElementById("output").innerText =
+        "Listening... Speak clearly!";
 
     recognition.onresult = function(event) {
-        let command = event.results[0][0].transcript.toLowerCase();
-        document.getElementById("output").innerText = "You said: " + command;
 
-        if (command.includes("set timer") || command.includes("timer")) {
-            let match = command.match(/(\d+)\s*(second|seconds|minute|minutes)/);
+        let command = "";
 
-            if (match) {
-                let amount = parseInt(match[1]);
-                let unit = match[2];
-                let seconds = unit.startsWith("minute") ? amount * 60 : amount;
+        for (let i = 0; i < event.results[0].length; i++) {
 
-                clearTimeout(timerId);
-                speak("Timer started for " + amount + " " + unit);
+            let alternative = event.results[0][i].transcript.toLowerCase();
 
-                timerId = setTimeout(function() {
-                    speak("Your timer is completed!");
-                }, seconds * 1000);
-            } else {
-                speak("Please specify timer duration in seconds or minutes.");
+            if (alternative.length > command.length) {
+                command = alternative;
             }
         }
-        else if (command.includes("hello") || command.includes("hi")) {
-            speak("Hello! How can I help you?");
-        }
-        else if (command.includes("time")) {
-            speak("The time is " + new Date().toLocaleTimeString());
-        }
-        else if (command.includes("date") || command.includes("today")) {
-            speak("Today's date is " + new Date().toLocaleDateString());
-        }
-        else if (command.includes("open google")) {
-            speak("Opening Google");
-            window.open("https://www.google.com", "_blank");
-        }
-        else if (command.includes("open youtube")) {
-            speak("Opening YouTube");
-            window.open("https://www.youtube.com", "_blank");
-        }
-        else {
-            speak("Sorry, I don't know that command.");
-        }
+
+        document.getElementById("output").innerText =
+            "You said: " + command;
+
+        processCommand(command);
     };
 
-    recognition.onerror = function() {
-        speak("Sorry, please try again.");
+    recognition.onerror = function(event) {
+
+        document.getElementById("output").innerText =
+            "Microphone error: " + event.error;
     };
 
     recognition.start();
 }
+
+
+function processCommand(command) {
+
+    command = command.toLowerCase().trim();
+
+    // 1. Timer command
+    let timerMatch = command.match(
+        /(?:set|start)\s+(?:a\s+)?(?:timer|time)\s+(?:for\s+)?(\d+)\s*(seconds?|secs?|minutes?|mins?|hours?|hrs?)/
+    );
+
+    if (!timerMatch) {
+
+        timerMatch = command.match(
+            /(?:timer|time)\s+(?:for\s+)?(\d+)\s*(seconds?|secs?|minutes?|mins?|hours?|hrs?)/
+        );
+    }
+
+    if (timerMatch) {
+
+        let amount = parseInt(timerMatch[1]);
+        let unit = timerMatch[2];
+
+        let seconds = 0;
+
+        if (unit.startsWith("sec")) {
+            seconds = amount;
+        }
+        else if (unit.startsWith("min")) {
+            seconds = amount * 60;
+        }
+        else if (unit.startsWith("hour") || unit.startsWith("hr")) {
+            seconds = amount * 3600;
+        }
+
+        if (seconds > 0) {
+
+            clearTimeout(timerId);
+
+            speak("Timer started for " + amount + " " + unit + ".");
+
+            timerId = setTimeout(function() {
+
+                speak("Your timer is completed!");
+
+            }, seconds * 1000);
+        }
+
+        return;
+    }
+
+    // 2. Greeting
+    if (/\b(hello|hi|hey)\b/.test(command)) {
+
+        speak("Hello! How can I help you?");
+        return;
+    }
+
+    // 3. Current time
+    if (
+        /\b(what is the time|tell me the time|current time|time now)\b/.test(command) ||
+        command === "time"
+    ) {
+
+        speak("The current time is " +
+            new Date().toLocaleTimeString());
+
+        return;
+    }
+
+    // 4. Date
+    if (
+        command.includes("date") ||
+        command.includes("today")
+    ) {
+
+        speak("Today's date is " +
+            new Date().toLocaleDateString());
+
+        return;
+    }
+
+    // 5. Open Google
+    if (command.includes("open google")) {
+
+        speak("Opening Google.");
+
+        window.open("https://www.google.com", "_blank");
+
+        return;
+    }
+
+    // 6. Open YouTube
+    if (command.includes("open youtube")) {
+
+        speak("Opening YouTube.");
+
+        window.open("https://www.youtube.com", "_blank");
+
+        return;
+    }
+
+    // 7. Exit
+    if (
+        command.includes("exit") ||
+        command.includes("quit") ||
+        command.includes("goodbye")
+    ) {
+
+        speak("Goodbye! Have a nice day.");
+        return;
+    }
+
+    // 8. Help
+    if (command.includes("help")) {
+
+        speak("You can ask me for time, date, timer, greetings, Google or YouTube.");
+
+        return;
+    }
+
+    // 9. Unknown command
+    speak("Sorry, I don't know that command. Please try again.");
+}
+
 </script>
+
 </body>
 </html>
