@@ -1,816 +1,146 @@
 
-<!DOCTYPE html>
-<html>
-<head>
-    <title>Basic Voice Assistant Using Python - Web Demo</title>
-    <meta name="viewport" content="width=device-width, initial-scale=1.0">
-
-    <style>
-        * {
-            box-sizing: border-box;
-        }
-
-        body {
-            font-family: Arial, sans-serif;
-            text-align: center;
-            background: linear-gradient(135deg, #eef2ff, #dbeafe);
-            padding: 30px 15px;
-            margin: 0;
-        }
-
-        .container {
-            background: white;
-            padding: 30px;
-            border-radius: 18px;
-            max-width: 650px;
-            margin: auto;
-            box-shadow: 0 5px 20px rgba(0,0,0,0.12);
-        }
-
-        h1 {
-            color: #3730a3;
-        }
-
-        button {
-            padding: 13px 22px;
-            background: #4f46e5;
-            color: white;
-            border: none;
-            border-radius: 8px;
-            cursor: pointer;
-            margin: 7px;
-            font-size: 15px;
-        }
-
-        button:hover {
-            background: #3730a3;
-        }
-
-        button:disabled {
-            background: #9ca3af;
-            cursor: not-allowed;
-        }
-
-        #output {
-            margin-top: 25px;
-            padding: 18px;
-            background: #eef2ff;
-            border-radius: 10px;
-            min-height: 60px;
-            font-size: 17px;
-            color: #1e1b4b;
-        }
-
-        .commands {
-            text-align: left;
-            background: #f3f4f6;
-            padding: 18px;
-            border-radius: 10px;
-            margin-top: 25px;
-        }
-
-        .commands h3 {
-            color: #3730a3;
-        }
-
-        .commands ul {
-            line-height: 1.8;
-        }
-
-        .status {
-            color: #6b7280;
-            font-size: 14px;
-        }
-
-        footer {
-            margin-top: 25px;
-            color: #6b7280;
-            font-size: 13px;
-        }
-    </style>
-</head>
-
-<body>
-
-<div class="container">
-
-    <h1>🎙️ Voice Assistant</h1>
-
-    <p>Basic Voice Assistant Using Python</p>
-
-    <p>Click the button and speak your command.</p>
-
-    <button id="startButton" onclick="startListening()">
-        🎤 Start Speaking
-    </button>
-
-    <button onclick="stopAssistant()">
-        ⏹ Stop
-    </button>
-
-    <p id="output">Assistant is ready!</p>
-
-    <p class="status" id="status">
-        Status: Ready
-    </p>
-
-    <div class="commands">
-
-        <h3>Available Voice Commands</h3>
-
-        <ul>
-            <li>Hello / Hi</li>
-            <li>What is the time?</li>
-            <li>What is today's date?</li>
-            <li>Set timer for 10 seconds</li>
-            <li>Remind me after 1 minute to drink water</li>
-            <li>Search Python tutorials</li>
-            <li>Search Wikipedia for Artificial Intelligence</li>
-            <li>Search YouTube for Python</li>
-            <li>Weather in Hyderabad</li>
-            <li>Open Google</li>
-            <li>Open YouTube</li>
-            <li>Open Gmail</li>
-            <li>Open ChatGPT</li>
-            <li>Open GitHub</li>
-            <li>Open Google Maps</li>
-            <li>Tell me a joke</li>
-            <li>System information</li>
-            <li>Help</li>
-            <li>Exit assistant</li>
-        </ul>
-
-    </div>
-
-    <footer>
-        Basic Voice Assistant Project | Browser Demo
-    </footer>
-
-</div>
-
-
-<script>
-
-let recognition = null;
-let timerId = null;
-let reminderTimers = [];
-let assistantStopped = false;
-let previousJoke = -1;
-
-
-// =================================
-// SPEAK FUNCTION
-// =================================
-
-function speak(message) {
-
-    document.getElementById("output").innerText =
-        "Assistant: " + message;
-
-    document.getElementById("status").innerText =
-        "Status: Speaking";
-
-    window.speechSynthesis.cancel();
-
-    let speech = new SpeechSynthesisUtterance(message);
-
-    speech.lang = "en-US";
-    speech.rate = 1;
-
-    speech.onend = function() {
-        document.getElementById("status").innerText =
-            "Status: Ready";
-    };
-
-    window.speechSynthesis.speak(speech);
-}
-
-
-// =================================
-// LISTEN FUNCTION
-// =================================
-
-function startListening() {
-
-    const SpeechRecognition =
-        window.SpeechRecognition ||
-        window.webkitSpeechRecognition;
-
-    if (!SpeechRecognition) {
-
-        speak(
-            "Speech recognition is not supported. Please use Google Chrome."
-        );
-
-        return;
-    }
-
-    if (recognition) {
-        try {
-            recognition.abort();
-        } catch (error) {}
-    }
-
-    assistantStopped = false;
-
-    recognition = new SpeechRecognition();
-
-    recognition.lang = "en-US";
-    recognition.continuous = false;
-    recognition.interimResults = false;
-    recognition.maxAlternatives = 3;
-
-    document.getElementById("output").innerText =
-        "Listening... Speak clearly!";
-
-    document.getElementById("status").innerText =
-        "Status: Listening";
-
-    document.getElementById("startButton").disabled = true;
-
-    recognition.onresult = function(event) {
-
-        let command = "";
-
-        for (let i = 0; i < event.results[0].length; i++) {
-
-            let alternative =
-                event.results[0][i].transcript.toLowerCase().trim();
-
-            if (alternative.length > command.length) {
-                command = alternative;
-            }
-        }
-
-        document.getElementById("output").innerText =
-            "You said: " + command;
-
-        processCommand(command);
-    };
-
-    recognition.onerror = function(event) {
-
-        if (
-            event.error !== "no-speech" &&
-            event.error !== "aborted"
-        ) {
-            document.getElementById("output").innerText =
-                "Microphone error: " + event.error;
-        }
-    };
-
-    recognition.onend = function() {
-
-        document.getElementById("startButton").disabled = false;
-
-        if (!assistantStopped) {
-            document.getElementById("status").innerText =
-                "Status: Ready - Click Start Speaking again";
-        }
-    };
-
-    try {
-        recognition.start();
-    } catch (error) {
-        document.getElementById("startButton").disabled = false;
-        document.getElementById("status").innerText =
-            "Status: Ready";
-    }
-}
-
-
-// =================================
-// TIMER FUNCTION
-// =================================
-
-function setTimer(command) {
-
-    let matches = [
-        ...command.matchAll(
-            /(\d+)\s*(hours?|hrs?|minutes?|mins?|seconds?|secs?)/g
-        )
-    ];
-
-    if (matches.length === 0) {
-        speak("Please specify the timer duration.");
-        return;
-    }
-
-    let totalSeconds = 0;
-
-    matches.forEach(match => {
-
-        let amount = parseInt(match[1]);
-        let unit = match[2];
-
-        if (unit.startsWith("hour") || unit.startsWith("hr")) {
-            totalSeconds += amount * 3600;
-        }
-        else if (unit.startsWith("minute") || unit.startsWith("min")) {
-            totalSeconds += amount * 60;
-        }
-        else {
-            totalSeconds += amount;
-        }
-    });
-
-    if (totalSeconds <= 0) {
-        speak("Please provide a valid timer duration.");
-        return;
-    }
-
-    clearTimeout(timerId);
-
-    speak("Timer started successfully.");
-
-    timerId = setTimeout(function() {
-
-        speak("Your timer is completed!");
-
-    }, totalSeconds * 1000);
-}
-
-
-// =================================
-// REMINDER FUNCTION
-// =================================
-
-function setReminder(command) {
-
-    let match = command.match(
-        /(?:remind me (?:in|after)|set (?:a )?reminder for)\s+(.+)/
-    );
-
-    if (!match) {
-        speak("Please specify the reminder time and message.");
-        return;
-    }
-
-    let details = match[1];
-
-    let durationMatches = [
-        ...details.matchAll(
-            /(\d+)\s*(hours?|hrs?|minutes?|mins?|seconds?|secs?)/g
-        )
-    ];
-
-    if (durationMatches.length === 0) {
-        speak("Please specify seconds or minutes.");
-        return;
-    }
-
-    let totalSeconds = 0;
-
-    durationMatches.forEach(match => {
-
-        let amount = parseInt(match[1]);
-        let unit = match[2];
-
-        if (unit.startsWith("hour") || unit.startsWith("hr")) {
-            totalSeconds += amount * 3600;
-        }
-        else if (unit.startsWith("minute") || unit.startsWith("min")) {
-            totalSeconds += amount * 60;
-        }
-        else {
-            totalSeconds += amount;
-        }
-    });
-
-    if (totalSeconds <= 0) {
-        speak("Please provide a valid reminder time.");
-        return;
-    }
-
-    let messageMatch = details.match(/\bto\s+(.+)$/);
-
-    let reminderMessage = messageMatch
-        ? messageMatch[1]
-        : "This is your reminder.";
-
-    let reminderId = setTimeout(function() {
-
-        speak("Reminder! " + reminderMessage);
-
-    }, totalSeconds * 1000);
-
-    reminderTimers.push(reminderId);
-
-    speak("Reminder has been set successfully.");
-}
-
-
-// =================================
-// GOOGLE SEARCH
-// =================================
-
-function googleSearch(command) {
-
-    let query = command.replace(
-        /^(search for|search|google)\s*/,
-        ""
-    ).trim();
-
-    if (!query) {
-        speak("What would you like me to search?");
-        return;
-    }
-
-    speak("Searching Google for " + query);
-
-    window.open(
-        "https://www.google.com/search?q=" +
-        encodeURIComponent(query),
-        "_blank"
-    );
-}
-
-
-// =================================
-// WIKIPEDIA SEARCH
-// =================================
-
-function wikipediaSearch(command) {
-
-    let query = command.replace(
-        /^(search )?wikipedia(\s+for|\s+about)?\s*/,
-        ""
-    ).trim();
-
-    if (!query) {
-        speak("Please tell me the Wikipedia topic.");
-        return;
-    }
-
-    speak("Searching Wikipedia for " + query);
-
-    window.open(
-        "https://en.wikipedia.org/w/index.php?search=" +
-        encodeURIComponent(query),
-        "_blank"
-    );
-}
-
-
-// =================================
-// YOUTUBE SEARCH
-// =================================
-
-function youtubeSearch(command) {
-
-    let query = command.replace(
-        /^(search youtube for|search youtube|youtube search)\s*/,
-        ""
-    ).trim();
-
-    if (!query) {
-        speak("What would you like to search on YouTube?");
-        return;
-    }
-
-    speak("Searching YouTube for " + query);
-
-    window.open(
-        "https://www.youtube.com/results?search_query=" +
-        encodeURIComponent(query),
-        "_blank"
-    );
-}
-
-
-// =================================
-// WEATHER SEARCH
-// =================================
-
-function weatherSearch(command) {
-
-    let city = command.replace(
-        /^(what is the weather in|weather in|weather)\s*/,
-        ""
-    ).trim();
-
-    if (!city) {
-        city = "today";
-    }
-
-    speak("Searching weather information.");
-
-    window.open(
-        "https://www.google.com/search?q=" +
-        encodeURIComponent("weather " + city),
-        "_blank"
-    );
-}
-
-
-// =================================
-// JOKE FUNCTION
-// =================================
-
-function tellJoke() {
-
-    let jokes = [
-
-        "Why did the computer go to the doctor? Because it had a virus.",
-
-        "Why was the computer cold? Because it left its Windows open.",
-
-        "Why do programmers prefer dark mode? Because light attracts bugs.",
-
-        "What is a computer's favourite snack? Microchips.",
-
-        "Why did the programmer quit his job? Because he didn't get arrays."
-
-    ];
-
-    let jokeIndex;
-
-    do {
-        jokeIndex = Math.floor(Math.random() * jokes.length);
-    }
-    while (
-        jokes.length > 1 &&
-        jokeIndex === previousJoke
-    );
-
-    previousJoke = jokeIndex;
-
-    speak(jokes[jokeIndex]);
-}
-
-
-// =================================
-// SYSTEM INFORMATION
-// =================================
-
-function systemInformation() {
-
-    let browser = navigator.userAgent;
-
-    let platformName = navigator.platform;
-
-    speak(
-        "Your device platform is " +
-        platformName +
-        ". Browser information is displayed on the screen."
-    );
-
-    document.getElementById("output").innerText +=
-        "\nPlatform: " + platformName +
-        "\nBrowser: " + browser;
-}
-
-
-// =================================
-// COMMAND PROCESSING
-// =================================
-
 function processCommand(command) {
 
     command = command.toLowerCase().trim();
 
-    if (!command) {
-        return;
-    }
+    // Remove punctuation
+    command = command.replace(/[.,!?]/g, "");
 
+    console.log("Recognized command:", command);
 
-    // 1. Reminder
-    if (
-        command.includes("remind me") ||
-        command.includes("set reminder")
-    ) {
-
-        setReminder(command);
-        return;
-    }
-
-
-    // 2. Timer
-    if (
-        command.includes("timer") ||
-        command.startsWith("start a timer") ||
-        command.startsWith("set a timer")
-    ) {
-
-        setTimer(command);
-        return;
-    }
-
-
-    // 3. Wikipedia Search
-    if (command.includes("wikipedia")) {
-
-        wikipediaSearch(command);
-        return;
-    }
-
-
-    // 4. YouTube Search
-    if (
-        command.startsWith("search youtube") ||
-        command.startsWith("youtube search")
-    ) {
-
-        youtubeSearch(command);
-        return;
-    }
-
-
-    // 5. Weather
-    if (command.includes("weather")) {
-
-        weatherSearch(command);
-        return;
-    }
-
-
-    // 6. System Information
-    if (
-        command.includes("system information") ||
-        command.includes("system details")
-    ) {
-
-        systemInformation();
-        return;
-    }
-
-
-    // 7. Jokes
-    if (command.includes("joke")) {
-
-        tellJoke();
-        return;
-    }
-
-
-    // 8. Gmail
-    if (command.includes("open gmail")) {
-
-        speak("Opening Gmail.");
-
-        window.open("https://mail.google.com", "_blank");
-        return;
-    }
-
-
-    // 9. ChatGPT
-    if (command.includes("open chatgpt")) {
-
-        speak("Opening ChatGPT.");
-
-        window.open("https://chatgpt.com", "_blank");
-        return;
-    }
-
-
-    // 10. GitHub
-    if (command.includes("open github")) {
-
-        speak("Opening GitHub.");
-
-        window.open("https://github.com", "_blank");
-        return;
-    }
-
-
-    // 11. Google Maps
-    if (
-        command.includes("open google maps") ||
-        command.includes("open maps")
-    ) {
-
-        speak("Opening Google Maps.");
-
-        window.open("https://maps.google.com", "_blank");
-        return;
-    }
-
-
-    // 12. YouTube
-    if (command.includes("open youtube")) {
-
-        speak("Opening YouTube.");
-
-        window.open("https://www.youtube.com", "_blank");
-        return;
-    }
-
-
-    // 13. Google
-    if (command === "open google") {
-
-        speak("Opening Google.");
-
-        window.open("https://www.google.com", "_blank");
-        return;
-    }
-
-
-    // 14. Google Search
-    if (
-        command.startsWith("search") ||
-        command.startsWith("google ")
-    ) {
-
-        googleSearch(command);
-        return;
-    }
-
-
-    // 15. Current Time
-    if (
-        command.includes("what is the time") ||
-        command.includes("tell me the time") ||
-        command.includes("current time") ||
-        command === "time" ||
-        command.includes("time now")
-    ) {
-
-        let currentTime =
-            new Date().toLocaleTimeString();
-
-        speak("The current time is " + currentTime);
-        return;
-    }
-
-
-    // 16. Today's Date
-    if (
-        command.includes("date") ||
-        command.includes("today")
-    ) {
-
-        let currentDate =
-            new Date().toLocaleDateString();
-
-        speak("Today's date is " + currentDate);
-        return;
-    }
-
-
-    // 17. Greeting
+    // Greeting
     if (/\b(hello|hi|hey)\b/.test(command)) {
-
         speak("Hello! How can I help you?");
         return;
     }
 
-
-    // 18. Help
-    if (command.includes("help")) {
-
-        speak(
-            "You can ask me for time, date, timer, reminders, " +
-            "Google search, Wikipedia, YouTube search, weather, " +
-            "Gmail, ChatGPT, GitHub, Google Maps, jokes or " +
-            "system information."
-        );
-
+    // Reminder
+    if (command.includes("remind me") ||
+        command.includes("set reminder")) {
+        setReminder(command);
         return;
     }
 
+    // Timer
+    if (command.includes("timer") ||
+        command.includes("countdown")) {
+        setTimer(command);
+        return;
+    }
 
-    // 19. Exit
-    if (
-        command.includes("exit") ||
+    // Wikipedia
+    if (command.includes("wikipedia")) {
+        wikipediaSearch(command);
+        return;
+    }
+
+    // YouTube search
+    if (command.includes("search youtube") ||
+        command.includes("youtube search") ||
+        command.includes("search on youtube")) {
+        youtubeSearch(command);
+        return;
+    }
+
+    // Weather
+    if (command.includes("weather")) {
+        weatherSearch(command);
+        return;
+    }
+
+    // Jokes
+    if (command.includes("joke")) {
+        tellJoke();
+        return;
+    }
+
+    // Gmail
+    if (command.includes("gmail")) {
+        speak("Opening Gmail.");
+        window.open("https://mail.google.com", "_blank");
+        return;
+    }
+
+    // ChatGPT
+    if (command.includes("chatgpt") ||
+        command.includes("chat gpt")) {
+        speak("Opening ChatGPT.");
+        window.open("https://chatgpt.com", "_blank");
+        return;
+    }
+
+    // GitHub
+    if (command.includes("github")) {
+        speak("Opening GitHub.");
+        window.open("https://github.com", "_blank");
+        return;
+    }
+
+    // Google Maps
+    if (command.includes("google maps") ||
+        command.includes("open maps")) {
+        speak("Opening Google Maps.");
+        window.open("https://maps.google.com", "_blank");
+        return;
+    }
+
+    // YouTube
+    if (command.includes("youtube")) {
+        speak("Opening YouTube.");
+        window.open("https://www.youtube.com", "_blank");
+        return;
+    }
+
+    // Google
+    if (command.includes("google")) {
+        speak("Opening Google.");
+        window.open("https://www.google.com", "_blank");
+        return;
+    }
+
+    // System information
+    if (command.includes("system information") ||
+        command.includes("system details")) {
+        systemInformation();
+        return;
+    }
+
+    // Search
+    if (command.startsWith("search") ||
+        command.startsWith("google")) {
+        googleSearch(command);
+        return;
+    }
+
+    // Time
+    if (command.includes("time")) {
+        speak("The current time is " +
+            new Date().toLocaleTimeString());
+        return;
+    }
+
+    // Date
+    if (command.includes("date") ||
+        command.includes("today")) {
+        speak("Today's date is " +
+            new Date().toLocaleDateString());
+        return;
+    }
+
+    // Help
+    if (command.includes("help")) {
+        speak("You can ask me for time, date, timer, reminders, Google search, YouTube, Wikipedia, weather, Gmail, ChatGPT, GitHub, Maps and jokes.");
+        return;
+    }
+
+    // Exit
+    if (command.includes("exit") ||
         command.includes("quit") ||
-        command.includes("goodbye")
-    ) {
-
+        command.includes("goodbye")) {
         stopAssistant();
         speak("Goodbye! Have a nice day.");
         return;
     }
 
-
-    // Unknown command
     speak("Sorry, I don't know that command. Please try again.");
 }
-
-
-// =================================
-// STOP ASSISTANT
-// =================================
-
-function stopAssistant() {
-
-    assistantStopped = true;
-
-    if (recognition) {
-        try {
-            recognition.abort();
-        } catch (error) {}
-    }
-
-    window.speechSynthesis.cancel();
-
-    document.getElementById("status").innerText =
-        "Status: Stopped";
-
-    document.getElementById("startButton").disabled = false;
-}
-
-</script>
-
-</body>
-</html>
